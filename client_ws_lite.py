@@ -39,6 +39,7 @@ import asyncio
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
+import cv2
 
 # Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -156,11 +157,13 @@ class ClientGUI:
         self.log_status(f"Source Face: {source_path}")
         self.log_status(f"Server URL: {server_url}")
         self.log_status(f"Camera Index: {camera_idx}")
-        # Create client
+        # Create client with GUI mode
         self.client = FaceSwapClient(
             server_url=server_url,
             camera_index=camera_idx,
-            source_face_path=source_path
+            source_face_path=source_path,
+            on_processed_frame=None,  # No callback needed for GUI mode
+            on_connection_status=self.on_connection_status
         )
         
         # Start client in background thread
@@ -173,17 +176,28 @@ class ClientGUI:
         self.stop_button.config(state=tk.NORMAL)
     
     def run_client(self):
-        """Run the client in an asyncio event loop."""
+        """Run the client in an asyncio event loop with video display."""
         try:
             # Create new event loop for this thread
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             
-            # Run the client
-            loop.run_until_complete(self.client.start_client())
+            # Import the video client runner
+            from modules.websocket_client import VideoClient
+            
+            # Create video client for display
+            video_client = VideoClient(
+                server_url=self.client.server_url,
+                camera_index=self.client.camera_index,
+                source_face_path=self.client.source_face_path
+            )
+            
+            # Run the video client with display
+            loop.run_until_complete(video_client.run(show_fps=True))
             
         except Exception as e:
-            self.root.after(0, lambda: self.log_status(f"Client error: {e}"))
+            error_msg = f"Client error: {e}"
+            self.root.after(0, lambda msg=error_msg: self.log_status(msg))
         finally:
             self.root.after(0, self.client_stopped)
     
@@ -201,6 +215,11 @@ class ClientGUI:
         # Update button states
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
+    
+    def on_connection_status(self, connected: bool, message: str):
+        """Handle connection status updates from the client."""
+        status = "Connected" if connected else "Disconnected"
+        self.root.after(0, lambda: self.log_status(f"Connection: {status} - {message}"))
     
     def client_stopped(self):
         """Called when the client has stopped."""

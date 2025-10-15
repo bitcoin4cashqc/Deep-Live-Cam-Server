@@ -138,7 +138,7 @@ class FaceSwapClient:
             return False
     
     async def disconnect(self):
-        if self.websocket and not self.websocket.closed:
+        if self.websocket and self.connected:
             await self.websocket.close()
         
         self.connected = False
@@ -322,7 +322,7 @@ class FaceSwapClient:
         """Send periodic ping to server to maintain connection"""
         while not self.stop_event.is_set() and self.connected:
             try:
-                if self.websocket and not self.websocket.closed:
+                if self.websocket and self.connected:
                     ping_message = json.dumps({
                         'type': 'ping',
                         'timestamp': time.time()
