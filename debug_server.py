@@ -16,7 +16,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-async def simple_handler(websocket, path):
+async def simple_handler(websocket):
     """Simple WebSocket handler that echoes messages"""
     client_addr = websocket.remote_address
     logger.info(f"Client connected from {client_addr}")
