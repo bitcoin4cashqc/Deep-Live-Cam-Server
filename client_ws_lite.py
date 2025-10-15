@@ -156,7 +156,6 @@ class ClientGUI:
         self.log_status(f"Source Face: {source_path}")
         self.log_status(f"Server URL: {server_url}")
         self.log_status(f"Camera Index: {camera_idx}")
-        !python client_ws.py -s test_face.jpg --server-url ws://localhost:8765
         # Create client
         self.client = FaceSwapClient(
             server_url=server_url,
