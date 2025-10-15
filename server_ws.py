@@ -47,22 +47,21 @@ if __name__ == '__main__':
         sys.argv.extend(['--server-port', '8765'])
     
     # Add quality settings for better face swapping
-    quality_args = [
-        '--many-faces',     # Process every face detected
-        '--map-faces',      # Better face mapping
-        '--mouth-mask'      # Preserve mouth region for better quality
-    ]
+    if '--mouth-mask' not in sys.argv:
+        sys.argv.append('--mouth-mask')
     
-    for arg in quality_args:
-        if arg not in sys.argv:
-            sys.argv.append(arg)
+    if '--keep-fps' not in sys.argv:
+        sys.argv.append('--keep-fps')
+    
+    if '--video-quality' not in sys.argv:
+        sys.argv.extend(['--video-quality', '0'])  # 0 = highest quality
     
     print("Deep Live Cam - WebSocket Server")
     print("==================================")
     print("Server starting - clients will provide their own source faces")
     print(f"Port: {8765 if '--server-port' not in sys.argv else 'custom'}")
     print(f"Execution Provider: {'CPU' if '--execution-provider' not in sys.argv else 'custom'}")
-    print("Quality Settings: many-faces, map-faces, mouth-mask enabled")
+    print("Quality Settings: mouth-mask, keep-fps, max video quality enabled")
     print("Each client can connect with their own face to swap")
     
     try:
