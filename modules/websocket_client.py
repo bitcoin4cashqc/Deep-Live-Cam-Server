@@ -444,7 +444,7 @@ class SimpleVideoClient:
     async def run(self, show_fps: bool = True):
         self.running = True
         
-        cv2.namedWindow(self.display_window, cv2.WINDOW_RESIZABLE)
+        cv2.namedWindow(self.display_window, cv2.WINDOW_NORMAL)
         
         # Start client in background
         client_task = asyncio.create_task(self.client.start_client())
