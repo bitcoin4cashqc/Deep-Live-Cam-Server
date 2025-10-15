@@ -140,7 +140,6 @@ class FaceSwapServer:
             for processor in self.frame_processors:
                 processed_frame = processor.process_frame(
                     source_face, 
-                    processed_frame, 
                     processed_frame
                 )
             
