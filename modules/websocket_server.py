@@ -227,7 +227,7 @@ class FaceSwapServer:
             
             await asyncio.sleep(0.001)  # Small delay to prevent busy waiting
     
-    async def handle_client(self, websocket: websockets.WebSocketServerProtocol, _: str):
+    async def handle_client(self, websocket: websockets.WebSocketServerProtocol):
         client_addr = getattr(websocket.remote_address, '__str__', lambda: 'unknown')()
         logger.info(f"New client connection from {client_addr}")
         
