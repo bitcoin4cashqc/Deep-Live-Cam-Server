@@ -47,10 +47,16 @@ class FaceSwapServer:
             'processing_time_avg': 0.0
         }
         
-        # Initialize face processors
-        self._initialize_processors()
+        # Initialize face processors (defer to async method)
+        self.frame_processors = []
+        self.processors_initialized = False
     
-    def _initialize_processors(self):
+    async def _initialize_processors(self):
+        """Initialize processors asynchronously to avoid blocking the event loop"""
+        if self.processors_initialized:
+            return
+            
+        logger.info("Initializing face processors...")
         modules.globals.headless = True
         
         # Initialize frame processors
@@ -58,8 +64,12 @@ class FaceSwapServer:
         
         # Pre-start processors
         for processor in self.frame_processors:
+            logger.info(f"Pre-starting processor: {processor.NAME}")
             if not processor.pre_start():
                 raise RuntimeError(f"Failed to initialize processor: {processor.NAME}")
+        
+        self.processors_initialized = True
+        logger.info("Face processors initialized successfully")
     
     async def register_client(self, websocket: websockets.WebSocketServerProtocol):
         self.clients.add(websocket)
@@ -110,6 +120,11 @@ class FaceSwapServer:
     def process_frame(self, frame: np.ndarray, client_websocket: websockets.WebSocketServerProtocol) -> Optional[np.ndarray]:
         try:
             start_time = time.time()
+            
+            # Check if processors are initialized
+            if not self.processors_initialized:
+                logger.warning("Processors not initialized yet, returning original frame")
+                return frame
             
             # Check if client has provided a source face
             if client_websocket not in self.client_source_faces:
@@ -324,14 +339,7 @@ class FaceSwapServer:
     async def start_server(self):
         logger.info(f"Starting WebSocket server on port {self.port}")
         
-        # Start processing threads
-        self.processing_thread = threading.Thread(
-            target=self.frame_processor_worker, 
-            daemon=True
-        )
-        self.processing_thread.start()
-        
-        # Start the WebSocket server
+        # Start the WebSocket server first (without heavy initialization)
         server = await websockets.serve(
             self.handle_client, 
             "0.0.0.0", 
@@ -341,6 +349,16 @@ class FaceSwapServer:
         )
         
         logger.info(f"WebSocket server started on ws://0.0.0.0:{self.port}")
+        
+        # Initialize processors asynchronously after server is running
+        asyncio.create_task(self._initialize_processors())
+        
+        # Start processing threads
+        self.processing_thread = threading.Thread(
+            target=self.frame_processor_worker, 
+            daemon=True
+        )
+        self.processing_thread.start()
         
         # Start frame distributor
         self.distributor_task = asyncio.create_task(self.frame_distributor_worker())
