@@ -346,7 +346,7 @@ class FaceSwapServer:
     async def start_server(self):
         logger.info(f"Starting WebSocket server on port {self.port}")
         
-        # Start the WebSocket server first (without heavy initialization)
+        # Start the WebSocket server first (minimal setup)
         server = await websockets.serve(
             self.handle_client, 
             "0.0.0.0", 
@@ -357,20 +357,32 @@ class FaceSwapServer:
         
         logger.info(f"WebSocket server started on ws://0.0.0.0:{self.port}")
         
-        # Initialize processors asynchronously after server is running
-        asyncio.create_task(self._initialize_processors())
-        
-        # Start processing threads
-        self.processing_thread = threading.Thread(
-            target=self.frame_processor_worker, 
-            daemon=True
-        )
-        self.processing_thread.start()
-        
-        # Start frame distributor
-        self.distributor_task = asyncio.create_task(self.frame_distributor_worker())
+        # Start background initialization without blocking
+        asyncio.create_task(self._start_background_services())
         
         return server
+    
+    async def _start_background_services(self):
+        """Start all background services after server is ready to accept connections"""
+        try:
+            # Initialize processors in background
+            await self._initialize_processors()
+            
+            # Start processing threads only after processors are ready
+            self.processing_thread = threading.Thread(
+                target=self.frame_processor_worker, 
+                daemon=True
+            )
+            self.processing_thread.start()
+            
+            # Start frame distributor
+            self.distributor_task = asyncio.create_task(self.frame_distributor_worker())
+            
+            logger.info("All background services started successfully")
+            
+        except Exception as e:
+            logger.error(f"Error starting background services: {e}")
+            raise
     
     def stop_server(self):
         logger.info("Stopping WebSocket server")
