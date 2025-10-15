@@ -157,14 +157,15 @@ class ClientGUI:
         self.log_status(f"Source Face: {source_path}")
         self.log_status(f"Server URL: {server_url}")
         self.log_status(f"Camera Index: {camera_idx}")
-        # Create client with GUI mode
+        # Create client
         self.client = FaceSwapClient(
             server_url=server_url,
             camera_index=camera_idx,
-            source_face_path=source_path,
-            on_processed_frame=None,  # No callback needed for GUI mode
-            on_connection_status=self.on_connection_status
+            source_face_path=source_path
         )
+        
+        # Set callbacks
+        self.client.on_connection_status = self.on_connection_status
         
         # Start client in background thread
         self.is_running = True
@@ -183,10 +184,10 @@ class ClientGUI:
             asyncio.set_event_loop(loop)
             
             # Import the video client runner
-            from modules.websocket_client import VideoClient
+            from modules.websocket_client import SimpleVideoClient
             
             # Create video client for display
-            video_client = VideoClient(
+            video_client = SimpleVideoClient(
                 server_url=self.client.server_url,
                 camera_index=self.client.camera_index,
                 source_face_path=self.client.source_face_path
