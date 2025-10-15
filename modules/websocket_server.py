@@ -375,8 +375,12 @@ async def run_server(port: int = 8765, max_workers: int = 4):
     
     try:
         ws_server = await server.start_server()
-        await ws_server.wait_closed()
+        # Keep the server running until interrupted
+        await asyncio.Future()  # Run forever
     except KeyboardInterrupt:
         logger.info("Server interrupted by user")
     finally:
         server.stop_server()
+        if ws_server:
+            ws_server.close()
+            await ws_server.wait_closed()
