@@ -1,0 +1,9 @@
+opencv-python==4.10.0.84
+cv2_enumerate_cameras==1.1.15
+pillow==11.1.0
+customtkinter==5.2.2
+tk==0.1.0
+websockets>=11.0
+psutil==5.9.8
+numpy>=1.23.5,<2
+typing-extensions>=4.8.0
