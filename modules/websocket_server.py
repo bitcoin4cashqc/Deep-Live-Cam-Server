@@ -186,8 +186,12 @@ class FaceSwapServer:
     async def frame_distributor_worker(self):
         while not self.stop_event.is_set():
             try:
-                # Get processed frame
-                target_client, processed_frame = self.processed_frames_queue.get(timeout=1.0)
+                # Get processed frame (non-blocking)
+                try:
+                    target_client, processed_frame = self.processed_frames_queue.get_nowait()
+                except queue.Empty:
+                    await asyncio.sleep(0.01)  # Small delay before checking again
+                    continue
                 
                 if processed_frame is not None:
                     # Encode frame
@@ -215,12 +219,11 @@ class FaceSwapServer:
                 
                 self.processed_frames_queue.task_done()
                 
-            except queue.Empty:
-                continue
             except Exception as e:
                 logger.error(f"Error in frame distributor: {e}")
             
-            await asyncio.sleep(0.001)  # Small delay to prevent busy waiting
+            # Small delay to prevent busy waiting when no frames available
+            await asyncio.sleep(0.001)
     
     async def handle_client(self, websocket: websockets.WebSocketServerProtocol):
         client_addr = getattr(websocket.remote_address, '__str__', lambda: 'unknown')()
@@ -392,8 +395,8 @@ class FaceSwapServer:
             init_thread = threading.Thread(target=init_processors, daemon=True)
             init_thread.start()
             
-            # Start frame distributor (this is lightweight)
-            # self.distributor_task = asyncio.create_task(self.frame_distributor_worker())  # Temporarily disabled
+            # Start frame distributor (now non-blocking)
+            self.distributor_task = asyncio.create_task(self.frame_distributor_worker())
             
             logger.info("Background services initialization started")
             
