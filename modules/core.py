@@ -49,6 +49,7 @@ def parse_args() -> None:
     program.add_argument('--max-memory', help='maximum amount of RAM in GB', dest='max_memory', type=int, default=suggest_max_memory())
     program.add_argument('--execution-provider', help='execution provider', dest='execution_provider', default=['cpu'], choices=suggest_execution_providers(), nargs='+')
     program.add_argument('--execution-threads', help='number of execution threads', dest='execution_threads', type=int, default=suggest_execution_threads())
+    program.add_argument('--headless', help='run in headless mode without GUI', dest='headless', action='store_true', default=False)
     program.add_argument('--server', help='run as WebSocket server', dest='server_mode', action='store_true', default=False)
     program.add_argument('--client', help='run as WebSocket client', dest='client_mode', action='store_true', default=False)
     program.add_argument('--server-url', help='WebSocket server URL for client mode', dest='server_url', default='ws://localhost:8765')
@@ -68,7 +69,7 @@ def parse_args() -> None:
     modules.globals.target_path = args.target_path
     modules.globals.output_path = normalize_output_path(modules.globals.source_path, modules.globals.target_path, args.output_path)
     modules.globals.frame_processors = args.frame_processor
-    modules.globals.headless = args.source_path or args.target_path or args.output_path
+    modules.globals.headless = args.headless or args.source_path or args.target_path or args.output_path
     modules.globals.keep_fps = args.keep_fps
     modules.globals.keep_audio = args.keep_audio
     modules.globals.keep_frames = args.keep_frames
