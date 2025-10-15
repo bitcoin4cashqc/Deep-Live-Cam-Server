@@ -52,31 +52,26 @@ class FaceSwapServer:
         self.processors_initialized = False
     
     async def _initialize_processors(self):
-        """Initialize processors asynchronously in a separate thread to avoid blocking the event loop"""
+        """Initialize processors with yield points to avoid blocking the event loop"""
         if self.processors_initialized:
             return
             
         logger.info("Initializing face processors in background...")
+        modules.globals.headless = True
         
-        def _sync_init():
-            """Synchronous initialization to run in thread"""
-            modules.globals.headless = True
-            
-            # Initialize frame processors
-            self.frame_processors = get_frame_processors_modules(modules.globals.frame_processors)
-            
-            # Pre-start processors
-            for processor in self.frame_processors:
-                logger.info(f"Pre-starting processor: {processor.NAME}")
-                if not processor.pre_start():
-                    raise RuntimeError(f"Failed to initialize processor: {processor.NAME}")
-            
-            self.processors_initialized = True
-            logger.info("Face processors initialized successfully")
+        # Initialize frame processors
+        self.frame_processors = get_frame_processors_modules(modules.globals.frame_processors)
         
-        # Run the heavy initialization in a thread pool to avoid blocking the event loop
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, _sync_init)
+        # Pre-start processors with yield points
+        for processor in self.frame_processors:
+            logger.info(f"Pre-starting processor: {processor.NAME}")
+            if not processor.pre_start():
+                raise RuntimeError(f"Failed to initialize processor: {processor.NAME}")
+            # Yield control back to event loop after each processor
+            await asyncio.sleep(0)
+        
+        self.processors_initialized = True
+        logger.info("Face processors initialized successfully")
     
     async def register_client(self, websocket: websockets.WebSocketServerProtocol):
         self.clients.add(websocket)
@@ -358,7 +353,7 @@ class FaceSwapServer:
         logger.info(f"WebSocket server started on ws://0.0.0.0:{self.port}")
         
         # Start background initialization without blocking
-        asyncio.create_task(self._start_background_services())
+        # asyncio.create_task(self._start_background_services())  # Temporarily disabled for testing
         
         return server
     
