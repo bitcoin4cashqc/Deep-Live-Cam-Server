@@ -31,6 +31,12 @@ import os
 # Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# GPU optimizations - set before importing modules
+if any('cuda' in arg.lower() for arg in sys.argv):
+    os.environ['OMP_NUM_THREADS'] = '1'  # Single thread doubles CUDA performance
+    os.environ['MKL_NUM_THREADS'] = '1'  # Optimize MKL for CUDA
+    os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'  # TensorFlow GPU memory growth
+
 from modules import core
 
 if __name__ == '__main__':
@@ -45,6 +51,10 @@ if __name__ == '__main__':
     # Set default server port if not specified
     if '--server-port' not in sys.argv:
         sys.argv.extend(['--server-port', '8765'])
+    
+    # Ensure CUDA execution provider is set for GPU acceleration
+    if '--execution-provider' not in sys.argv:
+        sys.argv.extend(['--execution-provider', 'cuda'])
     
     # Add quality settings for better face swapping
     if '--mouth-mask' not in sys.argv:
