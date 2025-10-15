@@ -393,7 +393,7 @@ class FaceSwapServer:
             init_thread.start()
             
             # Start frame distributor (this is lightweight)
-            self.distributor_task = asyncio.create_task(self.frame_distributor_worker())
+            # self.distributor_task = asyncio.create_task(self.frame_distributor_worker())  # Temporarily disabled
             
             logger.info("Background services initialization started")
             
