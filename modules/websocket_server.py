@@ -125,12 +125,12 @@ class FaceSwapServer:
             
             # Check if processors are initialized
             if not self.processors_initialized:
-                logger.warning("Processors not initialized yet, returning original frame")
+                logger.debug("Processors not initialized yet, returning original frame")
                 return frame
             
             # Check if client has provided a source face
             if client_websocket not in self.client_source_faces:
-                logger.warning("No source face provided by client, returning original frame")
+                logger.debug("No source face provided by client, returning original frame")
                 return frame
             
             source_face = self.client_source_faces[client_websocket]
@@ -138,10 +138,16 @@ class FaceSwapServer:
             
             # Apply frame processors with client-specific source face
             for processor in self.frame_processors:
-                processed_frame = processor.process_frame(
-                    source_face, 
-                    processed_frame
-                )
+                logger.debug(f"Processing frame with {processor.NAME}")
+                try:
+                    processed_frame = processor.process_frame(
+                        source_face, 
+                        processed_frame
+                    )
+                    logger.debug(f"✓ Frame processed by {processor.NAME}")
+                except Exception as e:
+                    logger.error(f"✗ Error in {processor.NAME}: {e}")
+                    return frame  # Return original on error
             
             # Update processing time statistics
             processing_time = time.time() - start_time
