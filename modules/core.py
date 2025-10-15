@@ -50,6 +50,11 @@ def parse_args() -> None:
     program.add_argument('--max-memory', help='maximum amount of RAM in GB', dest='max_memory', type=int, default=suggest_max_memory())
     program.add_argument('--execution-provider', help='execution provider', dest='execution_provider', default=['cpu'], choices=suggest_execution_providers(), nargs='+')
     program.add_argument('--execution-threads', help='number of execution threads', dest='execution_threads', type=int, default=suggest_execution_threads())
+    program.add_argument('--server', help='run as WebSocket server', dest='server_mode', action='store_true', default=False)
+    program.add_argument('--client', help='run as WebSocket client', dest='client_mode', action='store_true', default=False)
+    program.add_argument('--server-url', help='WebSocket server URL for client mode', dest='server_url', default='ws://localhost:8765')
+    program.add_argument('--server-port', help='WebSocket server port', dest='server_port', type=int, default=8765)
+    program.add_argument('--camera-index', help='camera index for client mode', dest='camera_index', type=int, default=0)
     program.add_argument('-v', '--version', action='version', version=f'{modules.metadata.name} {modules.metadata.version}')
 
     # register deprecated args
@@ -80,6 +85,11 @@ def parse_args() -> None:
     modules.globals.execution_providers = decode_execution_providers(args.execution_provider)
     modules.globals.execution_threads = args.execution_threads
     modules.globals.lang = args.lang
+    modules.globals.server_mode = args.server_mode
+    modules.globals.client_mode = args.client_mode
+    modules.globals.server_url = args.server_url
+    modules.globals.server_port = args.server_port
+    modules.globals.camera_index = args.camera_index
 
     #for ENHANCER tumbler:
     if 'face_enhancer' in args.frame_processor:
@@ -244,10 +254,78 @@ def destroy(to_quit=True) -> None:
     if to_quit: quit()
 
 
+def run_websocket_server() -> None:
+    update_status('Starting WebSocket server...')
+    
+    try:
+        import asyncio
+        from modules.websocket_server import run_server
+        
+        # Initialize frame processors
+        for frame_processor in get_frame_processors_modules(modules.globals.frame_processors):
+            if not frame_processor.pre_check():
+                return
+        
+        limit_resources()
+        
+        update_status(f'WebSocket server starting on port {modules.globals.server_port}')
+        update_status('Server ready - clients can connect with their own source faces')
+        
+        # Run the server (no source path needed)
+        asyncio.run(run_server(
+            modules.globals.server_port,
+            modules.globals.execution_threads or 4
+        ))
+        
+    except KeyboardInterrupt:
+        update_status('Server stopped by user')
+    except Exception as e:
+        update_status(f'Server error: {e}')
+
+
+def run_websocket_client() -> None:
+    update_status('Starting WebSocket client...')
+    
+    # Check if source face is provided
+    if not modules.globals.source_path:
+        update_status('Source face is required for client mode. Use: python client_ws.py -s face.jpg --server-url ws://server:8765')
+        return
+    
+    try:
+        import asyncio
+        from modules.websocket_client import run_simple_client
+        
+        update_status(f'Connecting to server: {modules.globals.server_url}')
+        update_status(f'Using source face: {modules.globals.source_path}')
+        
+        # Run the client
+        asyncio.run(run_simple_client(
+            modules.globals.server_url,
+            modules.globals.camera_index,
+            modules.globals.source_path
+        ))
+        
+    except KeyboardInterrupt:
+        update_status('Client stopped by user')
+    except Exception as e:
+        update_status(f'Client error: {e}')
+
+
 def run() -> None:
     parse_args()
     if not pre_check():
         return
+    
+    # Handle WebSocket server mode
+    if modules.globals.server_mode:
+        run_websocket_server()
+        return
+    
+    # Handle WebSocket client mode
+    if modules.globals.client_mode:
+        run_websocket_client()
+        return
+    
     for frame_processor in get_frame_processors_modules(modules.globals.frame_processors):
         if not frame_processor.pre_check():
             return

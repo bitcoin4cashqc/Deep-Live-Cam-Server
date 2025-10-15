@@ -36,7 +36,7 @@ if platform.system() == "Windows":
 ROOT = None
 POPUP = None
 POPUP_LIVE = None
-ROOT_HEIGHT = 750
+ROOT_HEIGHT = 780
 ROOT_WIDTH = 600
 
 PREVIEW = None
@@ -364,6 +364,50 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
         ),
     )
     live_button.place(relx=0.65, rely=0.86, relwidth=0.2, relheight=0.05)
+    
+    # --- WebSocket Client Controls ---
+    websocket_label = ctk.CTkLabel(root, text=_("WebSocket Client:"))
+    websocket_label.place(relx=0.1, rely=0.92, relwidth=0.2, relheight=0.04)
+    
+    websocket_url_var = ctk.StringVar(value="ws://localhost:8765")
+    websocket_url_entry = ctk.CTkEntry(
+        root, 
+        textvariable=websocket_url_var,
+        placeholder_text="WebSocket Server URL"
+    )
+    websocket_url_entry.place(relx=0.35, rely=0.92, relwidth=0.25, relheight=0.04)
+    
+    websocket_connect_button = ctk.CTkButton(
+        root,
+        text=_("Connect"),
+        cursor="hand2",
+        command=lambda: start_websocket_client(
+            websocket_url_var.get(),
+            (
+                camera_indices[camera_names.index(camera_variable.get())]
+                if camera_names and camera_names[0] != "No cameras found"
+                else 0
+            )
+        ),
+        state=(
+            "normal"
+            if camera_names and camera_names[0] != "No cameras found"
+            else "disabled"
+        ),
+    )
+    websocket_connect_button.place(relx=0.65, rely=0.92, relwidth=0.2, relheight=0.04)
+    
+    # Server Status Button
+    server_status_button = ctk.CTkButton(
+        root,
+        text=_("Server Status"),
+        cursor="hand2",
+        command=lambda: open_server_status_window(root),
+        width=100
+    )
+    server_status_button.place(relx=0.87, rely=0.92, relwidth=0.12, relheight=0.04)
+    # --- End WebSocket Client Controls ---
+    
     # --- End Camera Selection ---
 
     # 1) Define a DoubleVar for transparency (0 = fully transparent, 1 = fully opaque)
@@ -1268,3 +1312,193 @@ def update_webcam_target(
         else:
             update_pop_live_status("Face could not be detected in last upload!")
         return map
+
+
+def start_websocket_client(server_url: str, camera_index: int) -> None:
+    """Start WebSocket client in a separate thread"""
+    import threading
+    import asyncio
+    from modules.websocket_client import FaceSwapClient
+    
+    # Check if a source face is selected
+    if not modules.globals.source_path:
+        update_status("Please select a source face first")
+        return
+    
+    update_status(f"Connecting to WebSocket server: {server_url}")
+    
+    def run_client():
+        try:
+            client = FaceSwapClient(server_url, camera_index, modules.globals.source_path)
+            
+            # Set up callbacks for UI updates
+            def on_connection_status(connected: bool, message: str):
+                status = "Connected" if connected else "Disconnected"
+                update_status(f"WebSocket: {status} - {message}")
+            
+            def on_processed_frame(frame):
+                # This would be handled by the client's display window
+                pass
+            
+            def on_stats_update(stats):
+                # Update status with FPS info
+                fps_sent = stats.get('fps_sent', 0)
+                fps_received = stats.get('fps_received', 0)
+                update_status(f"WebSocket: Sent {fps_sent:.1f}fps, Received {fps_received:.1f}fps")
+            
+            client.on_connection_status = on_connection_status
+            client.on_processed_frame = on_processed_frame
+            client.on_stats_update = on_stats_update
+            
+            # Run the client
+            asyncio.run(client.start_client())
+            
+        except Exception as e:
+            update_status(f"WebSocket client error: {e}")
+    
+    # Start client in background thread
+    client_thread = threading.Thread(target=run_client, daemon=True)
+    client_thread.start()
+
+
+def open_server_status_window(parent):
+    """Open a window to show WebSocket server status and management"""
+    import json
+    
+    status_window = ctk.CTkToplevel(parent)
+    status_window.title("WebSocket Server Status")
+    status_window.geometry("500x400")
+    status_window.resizable(True, True)
+    
+    # Create main frame with scrollable area
+    main_frame = ctk.CTkFrame(status_window)
+    main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    
+    # Title
+    title_label = ctk.CTkLabel(main_frame, text="WebSocket Server Management", font=("Arial", 16, "bold"))
+    title_label.pack(pady=(10, 20))
+    
+    # Server controls frame
+    controls_frame = ctk.CTkFrame(main_frame)
+    controls_frame.pack(fill="x", padx=10, pady=(0, 10))
+    
+    # Server URL entry
+    url_label = ctk.CTkLabel(controls_frame, text="Server URL:")
+    url_label.pack(anchor="w", padx=10, pady=(10, 0))
+    
+    url_var = ctk.StringVar(value="ws://localhost:8765")
+    url_entry = ctk.CTkEntry(controls_frame, textvariable=url_var, width=300)
+    url_entry.pack(anchor="w", padx=10, pady=(5, 10))
+    
+    # Status display area
+    status_frame = ctk.CTkFrame(main_frame)
+    status_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+    
+    status_label = ctk.CTkLabel(status_frame, text="Server Status", font=("Arial", 14, "bold"))
+    status_label.pack(pady=(10, 5))
+    
+    # Server info text area
+    info_text = ctk.CTkTextbox(status_frame, height=200)
+    info_text.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+    
+    # Initial status
+    info_text.insert("1.0", "Server Status: Not Connected\n")
+    info_text.insert("end", "Click 'Check Status' to connect to a running server.\n\n")
+    info_text.insert("end", "Server Features:\n")
+    info_text.insert("end", "• Multi-client WebSocket support\n")
+    info_text.insert("end", "• Real-time face swapping\n")
+    info_text.insert("end", "• Concurrent frame processing\n")
+    info_text.insert("end", "• Performance statistics\n\n")
+    info_text.insert("end", "To start a server:\n")
+    info_text.insert("end", "python server_ws.py -s face.jpg\n")
+    
+    # Button frame
+    button_frame = ctk.CTkFrame(main_frame)
+    button_frame.pack(fill="x", padx=10, pady=(0, 10))
+    
+    def check_server_status():
+        """Check if server is running and get stats"""
+        import asyncio
+        import websockets
+        import json
+        
+        async def get_server_stats():
+            try:
+                uri = url_var.get()
+                async with websockets.connect(uri, ping_interval=None) as websocket:
+                    # Request stats
+                    await websocket.send(json.dumps({'type': 'stats_request'}))
+                    response = await websocket.recv()
+                    data = json.loads(response)
+                    
+                    if data.get('type') == 'stats':
+                        stats = data.get('data', {})
+                        return True, stats
+                    return False, None
+                    
+            except Exception as e:
+                return False, str(e)
+        
+        def update_status_display(connected, stats_or_error):
+            info_text.delete("1.0", "end")
+            
+            if connected:
+                info_text.insert("1.0", "✅ Server Status: Connected\n\n")
+                info_text.insert("end", f"Server URL: {url_var.get()}\n\n")
+                info_text.insert("end", "📊 Server Statistics:\n")
+                info_text.insert("end", f"Connected Clients: {stats_or_error.get('connected_clients', 0)}\n")
+                info_text.insert("end", f"Frames Received: {stats_or_error.get('frames_received', 0)}\n")
+                info_text.insert("end", f"Frames Processed: {stats_or_error.get('frames_processed', 0)}\n")
+                info_text.insert("end", f"Frames Sent: {stats_or_error.get('frames_sent', 0)}\n")
+                info_text.insert("end", f"Avg Processing Time: {stats_or_error.get('processing_time_avg', 0):.3f}s\n\n")
+                
+                # Client details
+                client_details = stats_or_error.get('client_details', {})
+                if client_details:
+                    info_text.insert("end", "👥 Connected Clients:\n")
+                    for client_id, details in client_details.items():
+                        frames_sent = details.get('frames_sent', 0)
+                        connected_at = details.get('connected_at', 0)
+                        info_text.insert("end", f"  • Client {client_id[-8:]}: {frames_sent} frames\n")
+                else:
+                    info_text.insert("end", "👥 No clients currently connected\n")
+            else:
+                info_text.insert("1.0", "❌ Server Status: Not Connected\n\n")
+                info_text.insert("end", f"Error: {stats_or_error}\n\n")
+                info_text.insert("end", "Possible solutions:\n")
+                info_text.insert("end", "• Start the server: python server_ws.py -s face.jpg\n")
+                info_text.insert("end", "• Check the server URL is correct\n")
+                info_text.insert("end", "• Ensure server is running and accessible\n")
+        
+        def run_check():
+            try:
+                connected, result = asyncio.run(get_server_stats())
+                status_window.after(0, lambda: update_status_display(connected, result))
+            except Exception as e:
+                status_window.after(0, lambda: update_status_display(False, str(e)))
+        
+        import threading
+        threading.Thread(target=run_check, daemon=True).start()
+    
+    # Buttons
+    check_button = ctk.CTkButton(button_frame, text="Check Status", command=check_server_status)
+    check_button.pack(side="left", padx=(10, 5), pady=10)
+    
+    refresh_button = ctk.CTkButton(button_frame, text="Auto Refresh", command=lambda: auto_refresh_status(check_server_status))
+    refresh_button.pack(side="left", padx=5, pady=10)
+    
+    close_button = ctk.CTkButton(button_frame, text="Close", command=status_window.destroy)
+    close_button.pack(side="right", padx=(5, 10), pady=10)
+
+
+def auto_refresh_status(check_function):
+    """Auto refresh server status every 5 seconds"""
+    import threading
+    import time
+    
+    def refresh_loop():
+        for _ in range(12):  # Run for 1 minute (12 * 5 seconds)
+            check_function()
+            time.sleep(5)
+    
+    threading.Thread(target=refresh_loop, daemon=True).start()

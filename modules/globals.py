@@ -68,4 +68,11 @@ enable_interpolation: bool = True # Toggle temporal smoothing
 interpolation_weight: float = 0  # Blend weight for current frame (0.0-1.0). Lower=smoother.
 # --- END: Added for Frame Interpolation ---
 
+# WebSocket Server/Client Configuration
+server_mode: bool = False
+client_mode: bool = False
+server_url: str = 'ws://localhost:8765'
+server_port: int = 8765
+camera_index: int = 0
+
 # --- END OF FILE globals.py ---
