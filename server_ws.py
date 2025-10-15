@@ -36,6 +36,11 @@ if any('cuda' in arg.lower() for arg in sys.argv):
     os.environ['OMP_NUM_THREADS'] = '1'  # Single thread doubles CUDA performance
     os.environ['MKL_NUM_THREADS'] = '1'  # Optimize MKL for CUDA
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'  # TensorFlow GPU memory growth
+    
+    # Advanced CUDA optimizations for RTX 2000 Ada
+    os.environ['CUDA_LAUNCH_BLOCKING'] = '0'  # Enable async CUDA operations
+    os.environ['CUDNN_BENCHMARK'] = '1'  # Enable cuDNN auto-tuning for performance
+    os.environ['TF_ENABLE_ONEDNN_OPTS'] = '1'  # Enable oneDNN optimizations
 
 from modules import core
 
@@ -56,7 +61,14 @@ if __name__ == '__main__':
     if '--execution-provider' not in sys.argv:
         sys.argv.extend(['--execution-provider', 'cuda'])
     
-    # Add quality settings for better face swapping
+    # Performance optimizations for RTX 2000 Ada + 31GB RAM
+    if '--max-memory' not in sys.argv:
+        sys.argv.extend(['--max-memory', '24'])  # Use 24GB of your 31GB RAM
+    
+    if '--execution-threads' not in sys.argv:
+        sys.argv.extend(['--execution-threads', '4'])  # Use 4 of your 6 vCPUs for optimal performance
+    
+    # Quality settings for better face swapping
     if '--mouth-mask' not in sys.argv:
         sys.argv.append('--mouth-mask')
     
@@ -66,12 +78,17 @@ if __name__ == '__main__':
     if '--video-quality' not in sys.argv:
         sys.argv.extend(['--video-quality', '0'])  # 0 = highest quality
     
+    # Additional performance settings
+    if '--video-encoder' not in sys.argv:
+        sys.argv.extend(['--video-encoder', 'libx264'])  # Fast, high-quality encoder
+    
     print("Deep Live Cam - WebSocket Server")
     print("==================================")
     print("Server starting - clients will provide their own source faces")
     print(f"Port: {8765 if '--server-port' not in sys.argv else 'custom'}")
-    print(f"Execution Provider: {'CPU' if '--execution-provider' not in sys.argv else 'custom'}")
-    print("Quality Settings: mouth-mask, keep-fps, max video quality enabled")
+    print("GPU: CUDA RTX 2000 Ada optimized")
+    print("Performance: 24GB RAM, 4 threads, cuDNN auto-tuning")
+    print("Quality: mouth-mask, keep-fps, max video quality, libx264")
     print("Each client can connect with their own face to swap")
     
     try:
