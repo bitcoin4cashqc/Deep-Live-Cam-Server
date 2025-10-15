@@ -353,27 +353,49 @@ class FaceSwapServer:
         logger.info(f"WebSocket server started on ws://0.0.0.0:{self.port}")
         
         # Start background initialization without blocking
-        # asyncio.create_task(self._start_background_services())  # Temporarily disabled for testing
+        asyncio.create_task(self._start_background_services())
         
         return server
     
     async def _start_background_services(self):
         """Start all background services after server is ready to accept connections"""
         try:
-            # Initialize processors in background
-            await self._initialize_processors()
+            # Add a small delay to ensure server is fully ready
+            await asyncio.sleep(0.1)
             
-            # Start processing threads only after processors are ready
-            self.processing_thread = threading.Thread(
-                target=self.frame_processor_worker, 
-                daemon=True
-            )
-            self.processing_thread.start()
+            # Initialize processors in a separate thread to avoid blocking
+            def init_processors():
+                try:
+                    logger.info("Starting processor initialization in thread...")
+                    modules.globals.headless = True
+                    self.frame_processors = get_frame_processors_modules(modules.globals.frame_processors)
+                    
+                    for processor in self.frame_processors:
+                        logger.info(f"Pre-starting processor: {processor.NAME}")
+                        if not processor.pre_start():
+                            raise RuntimeError(f"Failed to initialize processor: {processor.NAME}")
+                    
+                    self.processors_initialized = True
+                    logger.info("Face processors initialized successfully")
+                    
+                    # Start processing thread after initialization
+                    self.processing_thread = threading.Thread(
+                        target=self.frame_processor_worker, 
+                        daemon=True
+                    )
+                    self.processing_thread.start()
+                    
+                except Exception as e:
+                    logger.error(f"Error in processor initialization thread: {e}")
             
-            # Start frame distributor
+            # Run processor initialization in a separate thread
+            init_thread = threading.Thread(target=init_processors, daemon=True)
+            init_thread.start()
+            
+            # Start frame distributor (this is lightweight)
             self.distributor_task = asyncio.create_task(self.frame_distributor_worker())
             
-            logger.info("All background services started successfully")
+            logger.info("Background services initialization started")
             
         except Exception as e:
             logger.error(f"Error starting background services: {e}")
