@@ -19,8 +19,10 @@ def get_face_analyser() -> Any:
     global FACE_ANALYSER
 
     if FACE_ANALYSER is None:
+        print("🚀 Initializing InsightFace with CUDA acceleration...")
         FACE_ANALYSER = insightface.app.FaceAnalysis(name='buffalo_l', providers=modules.globals.execution_providers)
         FACE_ANALYSER.prepare(ctx_id=0, det_size=(640, 640))
+        print("✅ InsightFace initialized and ready for GPU acceleration")
     return FACE_ANALYSER
 
 

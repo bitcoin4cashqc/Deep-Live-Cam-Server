@@ -90,6 +90,9 @@ if __name__ == '__main__':
     print("Performance: 24GB RAM, 4 threads, cuDNN auto-tuning")
     print("Quality: mouth-mask, keep-fps, max video quality, libx264")
     print("Each client can connect with their own face to swap")
+    print()
+    print("💡 To verify GPU usage, run: nvidia-smi")
+    print("💡 Watch GPU utilization: watch -n 1 nvidia-smi")
     
     try:
         core.run()
