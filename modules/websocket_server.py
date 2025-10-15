@@ -343,13 +343,17 @@ class FaceSwapServer:
         logger.info(f"WebSocket server started on ws://0.0.0.0:{self.port}")
         
         # Start frame distributor
-        asyncio.create_task(self.frame_distributor_worker())
+        self.distributor_task = asyncio.create_task(self.frame_distributor_worker())
         
         return server
     
     def stop_server(self):
         logger.info("Stopping WebSocket server")
         self.stop_event.set()
+        
+        # Cancel the distributor task
+        if hasattr(self, 'distributor_task') and not self.distributor_task.done():
+            self.distributor_task.cancel()
         
         if self.processing_thread:
             self.processing_thread.join()
