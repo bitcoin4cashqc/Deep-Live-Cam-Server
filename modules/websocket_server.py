@@ -52,24 +52,31 @@ class FaceSwapServer:
         self.processors_initialized = False
     
     async def _initialize_processors(self):
-        """Initialize processors asynchronously to avoid blocking the event loop"""
+        """Initialize processors asynchronously in a separate thread to avoid blocking the event loop"""
         if self.processors_initialized:
             return
             
-        logger.info("Initializing face processors...")
-        modules.globals.headless = True
+        logger.info("Initializing face processors in background...")
         
-        # Initialize frame processors
-        self.frame_processors = get_frame_processors_modules(modules.globals.frame_processors)
+        def _sync_init():
+            """Synchronous initialization to run in thread"""
+            modules.globals.headless = True
+            
+            # Initialize frame processors
+            self.frame_processors = get_frame_processors_modules(modules.globals.frame_processors)
+            
+            # Pre-start processors
+            for processor in self.frame_processors:
+                logger.info(f"Pre-starting processor: {processor.NAME}")
+                if not processor.pre_start():
+                    raise RuntimeError(f"Failed to initialize processor: {processor.NAME}")
+            
+            self.processors_initialized = True
+            logger.info("Face processors initialized successfully")
         
-        # Pre-start processors
-        for processor in self.frame_processors:
-            logger.info(f"Pre-starting processor: {processor.NAME}")
-            if not processor.pre_start():
-                raise RuntimeError(f"Failed to initialize processor: {processor.NAME}")
-        
-        self.processors_initialized = True
-        logger.info("Face processors initialized successfully")
+        # Run the heavy initialization in a thread pool to avoid blocking the event loop
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _sync_init)
     
     async def register_client(self, websocket: websockets.WebSocketServerProtocol):
         self.clients.add(websocket)
