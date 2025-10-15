@@ -101,10 +101,16 @@ class FaceSwapClient:
         try:
             logger.info(f"Connecting to WebSocket server: {self.server_url}")
             
+            # Add headers to bypass ngrok browser warning
+            additional_headers = None
+            if 'ngrok' in self.server_url:
+                additional_headers = {'ngrok-skip-browser-warning': 'true'}
+            
             self.websocket = await websockets.connect(
                 self.server_url,
                 ping_interval=30,
-                ping_timeout=10
+                ping_timeout=10,
+                additional_headers=additional_headers
             )
             
             self.connected = True
