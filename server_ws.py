@@ -31,9 +31,6 @@ import os
 # Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Import the tkinter fix to patch the ScreenChanged error
-import tkinter_fix
-
 from modules import core
 
 if __name__ == '__main__':
