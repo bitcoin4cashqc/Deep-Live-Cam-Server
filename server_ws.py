@@ -68,7 +68,10 @@ if __name__ == '__main__':
     if '--execution-threads' not in sys.argv:
         sys.argv.extend(['--execution-threads', '8'])  # Increase threads for better GPU utilization
     
-    # Quality settings for better face swapping
+    # Quality settings for better face swapping - ENABLE FACE ENHANCER
+    if '--frame-processor' not in sys.argv:
+        sys.argv.extend(['--frame-processor', 'face_swapper', 'face_enhancer'])
+    
     if '--mouth-mask' not in sys.argv:
         sys.argv.append('--mouth-mask')
     
@@ -86,9 +89,9 @@ if __name__ == '__main__':
     print("==================================")
     print("Server starting - clients will provide their own source faces")
     print(f"Port: {8765 if '--server-port' not in sys.argv else 'custom'}")
-    print("GPU: CUDA RTX 2000 Ada optimized")
-    print("Performance: 24GB RAM, 4 threads, cuDNN auto-tuning")
-    print("Quality: mouth-mask, keep-fps, max video quality, libx264")
+    print("GPU: CUDA RTX 3090 optimized")
+    print("Performance: 20GB RAM, 8 threads, cuDNN auto-tuning")
+    print("Quality: face_enhancer, mouth-mask, keep-fps, max video quality, libx264")
     print("Each client can connect with their own face to swap")
     print()
     print("💡 To verify GPU usage, run: nvidia-smi")
