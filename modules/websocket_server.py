@@ -29,8 +29,8 @@ class FaceSwapServer:
         self.client_source_faces: Dict[websockets.WebSocketServerProtocol, Any] = {}  # Store face data per client
         
         # Frame processing queues (optimized for GPU utilization)
-        self.raw_frames_queue = queue.Queue(maxsize=30)  # Larger queue to keep GPU busy
-        self.processed_frames_queue = queue.Queue(maxsize=30)
+        self.raw_frames_queue = queue.Queue(maxsize=2)  # Small queue - drop old frames if processing is slow
+        self.processed_frames_queue = queue.Queue(maxsize=2)
         
         # Threading components
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -256,11 +256,11 @@ class FaceSwapServer:
                                 try:
                                     self.raw_frames_queue.put(
                                         (websocket, frame), 
-                                        timeout=0.1  # Longer timeout to ensure GPU gets work
+                                        timeout=0.01  # Short timeout - drop frames if too slow
                                     )
                                     self.stats['frames_received'] += 1
                                 except queue.Full:
-                                    logger.warning("Raw frames queue is full, dropping frame")
+                                    pass  # Silently drop frames when processing is slower than input
                             else:
                                 logger.warning(f"Failed to decode frame from {client_addr}")
                     

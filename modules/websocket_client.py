@@ -295,7 +295,7 @@ class FaceSwapClient:
         self.video_capturer.release()
         logger.info("Camera capture stopped")
     
-    async def capture_and_send_loop(self, target_fps: int = 30):
+    async def capture_and_send_loop(self, target_fps: int = 15):
         frame_delay = 1.0 / target_fps
         
         while not self.stop_event.is_set() and self.connected:
