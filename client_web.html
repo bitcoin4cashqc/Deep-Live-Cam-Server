@@ -456,8 +456,10 @@
                     };
 
                     websocket.onerror = (error) => {
-                        logStatus('WebSocket error occurred', 'error');
-                        reject(error);
+                        const errorMsg = error?.message || 'WebSocket connection failed';
+                        logStatus(errorMsg, 'error');
+                        console.error('WebSocket error:', error);
+                        reject(new Error(errorMsg));
                     };
 
                     websocket.onclose = () => {
@@ -470,7 +472,9 @@
                     };
 
                 } catch (error) {
-                    reject(error);
+                    const errorMsg = error?.message || 'Failed to connect to WebSocket';
+                    console.error('Connection error:', error);
+                    reject(new Error(errorMsg));
                 }
             });
         }
@@ -496,7 +500,9 @@
                 logStatus(`Webcam started: ${webcamVideo.videoWidth}x${webcamVideo.videoHeight}`, 'success');
                 return true;
             } catch (error) {
-                logStatus(`Error starting webcam: ${error.message}`, 'error');
+                const errorMsg = error?.message || error?.name || 'Failed to access camera';
+                logStatus(`Error starting webcam: ${errorMsg}`, 'error');
+                console.error('Webcam error:', error);
                 return false;
             }
         }
@@ -520,11 +526,17 @@
                         sourceImageData = dataUrl.split(',')[1];
                         resolve();
                     };
-                    img.onerror = reject;
+                    img.onerror = () => {
+                        console.error('Image load error');
+                        reject(new Error('Failed to load image'));
+                    };
                     img.src = e.target.result;
                 };
                 
-                reader.onerror = reject;
+                reader.onerror = (e) => {
+                    console.error('File reader error:', e);
+                    reject(new Error('Failed to read image file'));
+                };
                 reader.readAsDataURL(file);
             });
         }
@@ -575,7 +587,9 @@
                 logStatus('Client started successfully', 'success');
 
             } catch (error) {
-                logStatus(`Failed to start client: ${error.message}`, 'error');
+                const errorMsg = error?.message || error?.toString() || 'Unknown error';
+                logStatus(`Failed to start client: ${errorMsg}`, 'error');
+                console.error('Full error:', error);
                 startBtn.disabled = false;
                 stopClient();
             }
