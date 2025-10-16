@@ -42,6 +42,10 @@ def pre_check() -> bool:
 
 
 def pre_start() -> bool:
+    # Skip target path check in server mode (headless without target)
+    if modules.globals.server_mode or (modules.globals.headless and not modules.globals.target_path):
+        return True
+    
     if not is_image(modules.globals.target_path) and not is_video(
         modules.globals.target_path
     ):
