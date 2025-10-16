@@ -73,6 +73,8 @@ server_mode: bool = False
 client_mode: bool = False
 server_url: str = 'ws://localhost:8765'
 server_port: int = 8765
+ssl_cert: str | None = None
+ssl_key: str | None = None
 camera_index: int = 0
 
 # --- END OF FILE globals.py ---

@@ -54,6 +54,8 @@ def parse_args() -> None:
     program.add_argument('--client', help='run as WebSocket client', dest='client_mode', action='store_true', default=False)
     program.add_argument('--server-url', help='WebSocket server URL for client mode', dest='server_url', default='ws://localhost:8765')
     program.add_argument('--server-port', help='WebSocket server port', dest='server_port', type=int, default=8765)
+    program.add_argument('--ssl-cert', help='SSL certificate file for WSS (server mode)', dest='ssl_cert', default=None)
+    program.add_argument('--ssl-key', help='SSL private key file for WSS (server mode)', dest='ssl_key', default=None)
     program.add_argument('--camera-index', help='camera index for client mode', dest='camera_index', type=int, default=0)
     program.add_argument('-v', '--version', action='version', version=f'{modules.metadata.name} {modules.metadata.version}')
 
@@ -89,6 +91,8 @@ def parse_args() -> None:
     modules.globals.client_mode = args.client_mode
     modules.globals.server_url = args.server_url
     modules.globals.server_port = args.server_port
+    modules.globals.ssl_cert = args.ssl_cert
+    modules.globals.ssl_key = args.ssl_key
     modules.globals.camera_index = args.camera_index
 
     #for ENHANCER tumbler:
@@ -274,7 +278,9 @@ def run_websocket_server() -> None:
         # Run the server (no source path needed)
         asyncio.run(run_server(
             modules.globals.server_port,
-            modules.globals.execution_threads or 4
+            modules.globals.execution_threads or 4,
+            modules.globals.ssl_cert,
+            modules.globals.ssl_key
         ))
         
     except KeyboardInterrupt:

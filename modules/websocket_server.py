@@ -10,6 +10,8 @@ import time
 from typing import Set, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 import logging
+import ssl
+import os
 
 import modules.globals
 from modules.processors.frame.core import get_frame_processors_modules
@@ -19,9 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 class FaceSwapServer:
-    def __init__(self, port: int = 8765, max_workers: int = 4):
+    def __init__(self, port: int = 8765, max_workers: int = 4, ssl_cert: str = None, ssl_key: str = None):
         self.port = port
         self.max_workers = max_workers
+        self.ssl_cert = ssl_cert
+        self.ssl_key = ssl_key
         
         # Client management
         self.clients: Set[websockets.WebSocketServerProtocol] = set()
@@ -349,16 +353,28 @@ class FaceSwapServer:
     async def start_server(self):
         logger.info(f"Starting WebSocket server on port {self.port}")
         
+        # Setup SSL context if certificates are provided
+        ssl_context = None
+        if self.ssl_cert and self.ssl_key:
+            if os.path.exists(self.ssl_cert) and os.path.exists(self.ssl_key):
+                ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                ssl_context.load_cert_chain(self.ssl_cert, self.ssl_key)
+                logger.info("SSL enabled - using WSS protocol")
+            else:
+                logger.warning(f"SSL cert or key not found. Falling back to WS (insecure)")
+        
         # Start the WebSocket server first (minimal setup)
         server = await websockets.serve(
             self.handle_client, 
             "0.0.0.0", 
             self.port,
+            ssl=ssl_context,
             ping_interval=30,
             ping_timeout=10
         )
         
-        logger.info(f"WebSocket server started on ws://0.0.0.0:{self.port}")
+        protocol = "wss" if ssl_context else "ws"
+        logger.info(f"WebSocket server started on {protocol}://0.0.0.0:{self.port}")
         
         # Start background initialization without blocking
         asyncio.create_task(self._start_background_services())
@@ -432,8 +448,8 @@ class FaceSwapServer:
         }
 
 
-async def run_server(port: int = 8765, max_workers: int = 4):
-    server = FaceSwapServer(port, max_workers)
+async def run_server(port: int = 8765, max_workers: int = 4, ssl_cert: str = None, ssl_key: str = None):
+    server = FaceSwapServer(port, max_workers, ssl_cert, ssl_key)
     
     try:
         ws_server = await server.start_server()
