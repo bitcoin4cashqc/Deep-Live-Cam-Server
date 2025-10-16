@@ -66,7 +66,7 @@ if __name__ == '__main__':
         sys.argv.extend(['--max-memory', '24'])  # Use 24GB of your 31GB RAM
     
     if '--execution-threads' not in sys.argv:
-        sys.argv.extend(['--execution-threads', '4'])  # Use 4 of your 6 vCPUs for optimal performance
+        sys.argv.extend(['--execution-threads', '8'])  # Increase threads for better GPU utilization
     
     # Quality settings for better face swapping
     if '--mouth-mask' not in sys.argv:

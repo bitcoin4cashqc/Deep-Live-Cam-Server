@@ -28,9 +28,9 @@ class FaceSwapServer:
         self.client_info: Dict[websockets.WebSocketServerProtocol, Dict[str, Any]] = {}
         self.client_source_faces: Dict[websockets.WebSocketServerProtocol, Any] = {}  # Store face data per client
         
-        # Frame processing queues (reduced for single client, real-time processing)
-        self.raw_frames_queue = queue.Queue(maxsize=5)
-        self.processed_frames_queue = queue.Queue(maxsize=5)
+        # Frame processing queues (optimized for GPU utilization)
+        self.raw_frames_queue = queue.Queue(maxsize=30)  # Larger queue to keep GPU busy
+        self.processed_frames_queue = queue.Queue(maxsize=30)
         
         # Threading components
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -173,23 +173,13 @@ class FaceSwapServer:
                     if processed_frame is not None:
                         # Add to processed queue
                         try:
-                            # For real-time processing, clear old frames if queue is full
-                            if self.processed_frames_queue.full():
-                                try:
-                                    # Remove oldest processed frame
-                                    self.processed_frames_queue.get_nowait()
-                                    self.processed_frames_queue.task_done()
-                                except queue.Empty:
-                                    pass
-                            
                             self.processed_frames_queue.put(
                                 (client_websocket, processed_frame), 
                                 timeout=0.1
                             )
                             self.stats['frames_processed'] += 1
                         except queue.Full:
-                            # This should rarely happen now
-                            pass
+                            logger.warning("Processed frames queue is full, dropping frame")
                 
                 self.raw_frames_queue.task_done()
                 
@@ -264,23 +254,13 @@ class FaceSwapServer:
                             frame = self.decode_frame(frame_data)
                             if frame is not None:
                                 try:
-                                    # For real-time processing, clear old frames if queue is full
-                                    if self.raw_frames_queue.full():
-                                        try:
-                                            # Remove oldest frame to make room
-                                            self.raw_frames_queue.get_nowait()
-                                            self.raw_frames_queue.task_done()
-                                        except queue.Empty:
-                                            pass
-                                    
                                     self.raw_frames_queue.put(
                                         (websocket, frame), 
-                                        timeout=0.01
+                                        timeout=0.1  # Longer timeout to ensure GPU gets work
                                     )
                                     self.stats['frames_received'] += 1
                                 except queue.Full:
-                                    # This should rarely happen now
-                                    pass
+                                    logger.warning("Raw frames queue is full, dropping frame")
                             else:
                                 logger.warning(f"Failed to decode frame from {client_addr}")
                     
