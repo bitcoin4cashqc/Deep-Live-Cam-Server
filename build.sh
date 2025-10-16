@@ -4,9 +4,6 @@ set -e
 # -----------------------------
 # Configuration
 # -----------------------------
-PROJECT_DIR="./Deep-Live-Cam-Server"
-BRANCH="Server"
-VENV_DIR="$PROJECT_DIR/.venv"
 PYTHON_BIN="python3"
 
 apt install -y \
@@ -31,22 +28,19 @@ command -v $PYTHON_BIN >/dev/null 2>&1 || { echo >&2 "python3 is required but no
 # -----------------------------
 # 2. Clone repo cleanly
 # -----------------------------
-if [ -d "$PROJECT_DIR" ]; then
-    echo "$PROJECT_DIR already exists, removing..."
-    rm -rf "$PROJECT_DIR"
-fi
+
 
 echo "Cloning repository..."
-git clone -b $BRANCH https://github.com/bitcoin4cashqc/Deep-Live-Cam-Server.git "$PROJECT_DIR"
-cd "$PROJECT_DIR"
+git clone -b Server https://github.com/bitcoin4cashqc/Deep-Live-Cam-Server.git
+cd "Deep-Live-Cam-Server"
 
 
 # -----------------------------
 # 3. Create and activate virtual environment
 # -----------------------------
 echo "Creating virtual environment..."
-$PYTHON_BIN -m venv $VENV_DIR
-source $VENV_DIR/bin/activate
+$PYTHON_BIN -m venv .venv
+source .venv/bin/activate
 
 # Upgrade pip/setuptools/wheel
 pip install --upgrade pip setuptools wheel
@@ -77,7 +71,7 @@ pip install git+https://github.com/TencentARC/GFPGAN.git@master
 # -----------------------------
 # 5. Download models
 # -----------------------------
-mkdir -p models
+
 echo "Downloading inswapper_128_fp16.onnx..."
 wget -O models/inswapper_128_fp16.onnx "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx?download=true"
 

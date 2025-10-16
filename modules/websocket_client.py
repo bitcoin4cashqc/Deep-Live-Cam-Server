@@ -62,7 +62,7 @@ class FaceSwapClient:
     def encode_frame(self, frame: np.ndarray) -> Optional[str]:
         try:
             # Encode frame to JPEG
-            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
             
             # Convert to base64
             frame_data = base64.b64encode(buffer).decode('utf-8')
